@@ -19,5 +19,6 @@ TASK:
 Regenerate a completely safe alternative culinary suggestion for the user.
 - REMOVE and REPLACE any dish, ingredient, or sauce that contains or is derived from the identified allergens ({allergen_conflicts}).
 - Continue to follow all other hard constraints, dietary preferences, and pantry items.
-- Provide clear, safe, and delicious alternative suggestions.
+- Provide clear, safe, and delicious alternative suggestions in clean Markdown. For recipes, use a bold title, an **Ingredients** heading with bullets, and **Steps** with a numbered list. Avoid long unbroken paragraphs, raw HTML, and fenced code blocks.
+- Write each `important_things_to_remember` item as plain text without Markdown formatting.
 - Populate `memory_ids_used` with the IDs of memories used in this alternative answer.

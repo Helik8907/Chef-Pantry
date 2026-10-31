@@ -26,9 +26,11 @@ class FakeMemoryRepository:
         self,
         vector_results: Optional[list[dict[str, Any]]] = None,
         allergies: Optional[list[dict[str, Any]]] = None,
+        preferences: Optional[list[dict[str, Any]]] = None,
     ) -> None:
         self.vector_results: list[dict[str, Any]] = vector_results or []
         self.allergies: list[dict[str, Any]] = allergies or []
+        self.preferences: list[dict[str, Any]] = preferences or []
         self.marked_used_ids: list[str] = []
         self.raise_not_ready: bool = False
 
@@ -53,6 +55,8 @@ class FakeMemoryRepository:
         type_str = memory_type.value if hasattr(memory_type, "value") else str(memory_type)
         if type_str == "allergy":
             return self.allergies
+        if type_str == "preference":
+            return self.preferences
         return []
 
     def mark_used(self, memory_ids: list[str]) -> int:
@@ -155,6 +159,30 @@ def test_allergies_always_included_and_deduplicated():
     assert result.recalled[0].memory.id == "012345678901234567890002"
     assert result.recalled[0].score.similarity == 0.88
     assert "semantic match (0.88)" in result.recalled[0].reasons
+
+
+def test_dietary_preferences_always_included_and_deduplicated():
+    """Active dietary preferences are passed through even when vector search does not rank them."""
+    preference_doc = {
+        "_id": "012345678901234567890003",
+        "user_id": "user_chef",
+        "type": "preference",
+        "text": "Follows a vegan diet",
+        "status": "active",
+        "_score": 0.42,
+    }
+    repo = FakeMemoryRepository(
+        vector_results=[preference_doc],
+        preferences=[preference_doc],
+    )
+    service = MemoryRecall(repository=repo)
+
+    result = service.recall(user_id="user_chef", query_text="What should I cook tonight?")
+
+    assert len(result.always_applied) == 1
+    assert result.always_applied[0].id == "012345678901234567890003"
+    assert result.always_applied[0].type == MemoryType.PREFERENCE
+    assert result.recalled == []
 
 
 def test_lifecycle_exclusions():

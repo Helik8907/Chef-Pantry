@@ -203,7 +203,7 @@ def test_pantry_and_temporary_policies():
     assert pantry_pol.ttl == timedelta(days=3)
     assert pantry_pol.protected is False
     assert pantry_pol.auto_supersede_allowed is True
-    assert pantry_pol.type_priority == 0.4
+    assert pantry_pol.type_priority == 0.2
     assert pantry_pol.recency_half_life_days == 3.0
 
     temp_pol = get_policy(MemoryType.TEMPORARY_CONTEXT, demo_mode=False)
@@ -217,6 +217,7 @@ def test_pantry_and_temporary_policies():
     assert pref_pol.ttl is None
     assert pref_pol.type_priority == 0.8
     assert pref_pol.recency_half_life_days == 180.0
+    assert pref_pol.always_apply is True
 
     meal_pol = get_policy(MemoryType.MEAL_OUTCOME)
     assert meal_pol.ttl is None

@@ -1,7 +1,12 @@
 """Script to provision and poll MongoDB Atlas vector and operational indexes."""
 
+from pathlib import Path
 import sys
 import time
+
+# Ensure project root is in sys.path when running script directly
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import pymongo
 
 from app.infra.config import get_database

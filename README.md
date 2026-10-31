@@ -69,8 +69,7 @@ Standard conversational AI assistants suffer from context amnesia between sessio
 │   │   ├── extraction.py      # Structured memory extraction
 │   │   └── memory_recall.py   # Vector search and candidate reranking
 │   └── ui/                    # Streamlit frontend application
-│       ├── components/        # Reusable chat and memory visualizer panels
-│       ├── pages/             # Memory inspector and debug pages
+│       ├── components/        # Chat, sidebar, auth, and memory management components
 │       └── main.py            # Streamlit application entrypoint
 ├── scripts/
 │   ├── create_indexes.py      # MongoDB Atlas index provisioning script
@@ -98,6 +97,158 @@ Standard conversational AI assistants suffer from context amnesia between sessio
 - **Embeddings**: [Voyage AI](https://www.voyageai.com/) / MongoDB Automated Embedding
 - **User Interface**: [Streamlit](https://streamlit.io/)
 - **Testing & Quality Assurance**: [Pytest](https://docs.pytest.org/)
+
+---
+
+## 🗄️ Database Collection Schemas
+
+Memory Chef persists data across three core MongoDB collections within the `chef_pantry` database: `memories`, `messages`, and `users`.
+
+### 1. `memories` Collection
+Stores all extracted episodic and semantic culinary memories, preference profiles, allergies, inventory, and meal feedback.
+
+```json
+{
+  "_id": "67232230113f382103f69910",
+  "user_id": "user_123",
+  "session_id": "session_abc",
+  "type": "allergy",
+  "text": "Severe peanut allergy",
+  "structured": {
+    "allergen": "peanut",
+    "severity": "severe",
+    "notes": "Anaphylactic reaction to all tree nuts and peanuts"
+  },
+  "tags": ["allergy", "peanut", "severe"],
+  "source": "user",
+  "source_message_id": "67232230113f382103f69905",
+  "confidence": 1.0,
+  "embedding": [0.0125, -0.0431, 0.0892, "... 1024 dimensions ..."],
+  "created_at": "2026-10-31T06:30:00Z",
+  "updated_at": "2026-10-31T06:30:00Z",
+  "last_used_at": "2026-10-31T07:15:00Z",
+  "expires_at": null,
+  "status": "active",
+  "superseded_by": null,
+  "supersedes": null,
+  "protected": true,
+  "use_count": 4,
+  "deleted_at": null,
+  "visibility": "private"
+}
+```
+
+#### Field Specifications:
+| Field | Type | Description |
+|---|---|---|
+| `_id` | `ObjectId / string` | Primary unique 24-character hexadecimal identifier. |
+| `user_id` | `string` | Identifier of the user who owns this memory. |
+| `session_id` | `string \| null` | Chat session identifier in which this memory was established. |
+| `type` | `string` | Categorical type: `"allergy"`, `"preference"`, `"meal_outcome"`, `"pantry_item"`, `"temporary_context"`. |
+| `text` | `string` | Normalized, clean natural language memory statement. |
+| `structured` | `object` | Type-specific structured metadata payload (see sub-schemas below). |
+| `tags` | `array<string>` | Normalized, lowercase classification tags. |
+| `source` | `string` | Origin of capture: `"user"`, `"agent"`, `"inferred"`, or `"system"`. |
+| `source_message_id` | `string \| null` | Pointer to source chat message if extracted from a conversation turn. |
+| `confidence` | `double` | Extraction confidence score between `0.0` and `1.0`. |
+| `embedding` | `array<double> \| null` | Dense vector embedding (1024 dims for Voyage AI; omitted in Atlas Auto mode). |
+| `created_at` | `ISODate (UTC)` | Creation timestamp. |
+| `updated_at` | `ISODate (UTC)` | Timestamp of most recent update or modification. |
+| `last_used_at` | `ISODate \| null` | Timestamp when this memory was last recalled and cited in an answer. |
+| `expires_at` | `ISODate \| null` | Expiration timestamp in UTC (enforces automated TTL eviction). |
+| `status` | `string` | Lifecycle state: `"active"`, `"superseded"`, `"deleted"`, or `"expired"`. |
+| `superseded_by` | `string \| null` | Pointer to the newer memory ID that replaced this entry. |
+| `supersedes` | `string \| null` | Pointer to the older memory ID that this entry replaced. |
+| `protected` | `boolean` | If `true`, immune to automatic decay, replacement, or eviction (forced `true` for allergies). |
+| `use_count` | `integer` | Cumulative count of times this memory contributed to generation. |
+| `deleted_at` | `ISODate \| null` | Timestamp recorded upon soft-deletion. |
+| `visibility` | `string` | Sharing scope: `"private"` or `"shared"`. |
+
+#### Structured Payloads by Memory Type:
+- **`allergy`**: `{"allergen": str, "severity": "mild"|"moderate"|"severe", "notes": str}`
+- **`preference`**: `{"category": str, "target": str, "polarity": "like"|"dislike"|"neutral", "strength": float}`
+- **`meal_outcome`**: `{"dish_name": str, "rating": int (1-5), "notes": str, "adjustments": list[str]}`
+- **`pantry_item`**: `{"ingredient": str, "quantity": str, "unit": str, "expires_at": datetime}`
+- **`temporary_context`**: `{"context": str, "for_people": int}`
+
+#### Operational & Vector Indexes:
+- **Vector Search Index**: `memories_vector_index` on `embedding` (or `text` for Atlas Automated Embedding).
+- **TTL Index**: `expires_at` ascending with `expireAfterSeconds: 0`.
+- **Compound Query Index**: `[("user_id", 1), ("status", 1), ("type", 1)]`.
+
+---
+
+### 2. `messages` Collection
+Records user and assistant conversation history, tracking memory utilization and turns.
+
+```json
+{
+  "_id": "67232230113f382103f69905",
+  "user_id": "user_123",
+  "session_id": "session_abc",
+  "role": "assistant",
+  "content": "I recommend a spicy Thai Basil Tofu stir-fry. Because I remembered you have a severe peanut allergy, I ensured no peanuts or peanut oils are used.",
+  "memories_used": [
+    {
+      "memory_id": "67232230113f382103f69910",
+      "text": "Severe peanut allergy",
+      "type": "allergy",
+      "score": 0.95,
+      "reasons": ["Always-applied allergy constraint", "High semantic relevance to Thai cuisine"]
+    }
+  ],
+  "memories_created": ["67232230113f382103f69915"],
+  "created_at": "2026-10-31T06:30:05Z"
+}
+```
+
+#### Field Specifications:
+| Field | Type | Description |
+|---|---|---|
+| `_id` | `ObjectId / string` | Primary unique 24-character hexadecimal identifier. |
+| `user_id` | `string` | User ID associated with this interaction. |
+| `session_id` | `string` | Conversation session grouping handle. |
+| `role` | `string` | Message sender role: `"user"` or `"assistant"`. |
+| `content` | `string` | Full text content of the message. |
+| `memories_used` | `array<object>` | List of recalled memory objects cited during answer generation. |
+| `memories_created` | `array<string>` | List of memory IDs extracted and persisted from this turn. |
+| `created_at` | `ISODate (UTC)` | UTC timestamp of message creation. |
+
+#### Operational Indexes:
+- **Compound History Index**: `[("session_id", 1), ("created_at", 1)]`.
+
+---
+
+### 3. `users` Collection
+Stores user account profiles, measurement standards, and privacy settings.
+
+```json
+{
+  "_id": "67232230113f382103f69900",
+  "user_id": "user_123",
+  "display_name": "Aaditya",
+  "created_at": "2026-10-31T06:00:00Z",
+  "settings": {
+    "units": "metric",
+    "memory_enabled": true
+  }
+}
+```
+
+#### Field Specifications:
+| Field | Type | Description |
+|---|---|---|
+| `_id` | `ObjectId / string` | Primary unique 24-character hexadecimal identifier. |
+| `user_id` | `string` | Unique user handle (e.g., `'user_123'`). |
+| `display_name` | `string` | User display name. |
+| `created_at` | `ISODate (UTC)` | User profile creation timestamp in UTC. |
+| `settings.units` | `string` | Preferred recipe measurement units: `'metric'` or `'imperial'`. |
+| `settings.memory_enabled`| `boolean` | Master toggle: when `false`, bypasses memory retrieval and storage. |
+
+#### Operational Indexes:
+- **Unique Account Index**: `[("user_id", 1)]` (unique: true).
+
+---
 
 ---
 

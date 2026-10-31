@@ -294,6 +294,7 @@ class ChatOrchestrator:
         validated_used_ids: list[str] = []
         safety_warnings: list[str] = []
         generation_success = False
+        chef_result: Optional[Any] = None
 
         if self.chef is not None:
             t0 = time.perf_counter()
@@ -331,6 +332,33 @@ class ChatOrchestrator:
                     generation_success,
                     len(validated_used_ids),
                 )
+
+        # Store important things extracted from response if provided by LLM
+        resp_important_things = getattr(chef_result, "important_things_to_remember", []) if chef_result else []
+        if memory_enabled and resp_important_things and self.store is not None:
+            try:
+                resp_candidates = [
+                    CandidateMemory(
+                        type=MemoryType.TEMPORARY_CONTEXT,
+                        text=item.strip(),
+                        confidence=0.85,
+                        tags=["assistant_response", "chef_note"],
+                    )
+                    for item in resp_important_things
+                    if isinstance(item, str) and item.strip()
+                ]
+                if resp_candidates:
+                    resp_store_result = self.store.store_candidates(
+                        user_id=request.user_id,
+                        session_id=request.session_id,
+                        source_message_id=user_msg_id,
+                        candidates=resp_candidates,
+                        now=self.now_fn(),
+                    )
+                    resp_created = getattr(resp_store_result, "created", [])
+                    created_memories.extend(resp_created)
+            except Exception as exc:
+                logger.warning("Failed to store important things from response: %s", exc)
 
         # 9. After successful reply only: mark memories used
         if generation_success and validated_used_ids and self.recall is not None:

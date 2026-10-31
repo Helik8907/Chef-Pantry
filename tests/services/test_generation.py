@@ -169,7 +169,7 @@ def test_chef_passes_allergies_as_hard_constraints() -> None:
 
     assert len(captured_prompts) == 1
     prompt = captured_prompts[0]
-    assert "HARD CONSTRAINTS (ALLERGIES - MANDATORY)" in prompt
+    assert "ACTIVE ALLERGIES AND SAVED DIETARY / FOOD PREFERENCES" in prompt
     assert allergy_id in prompt
     assert "Allergic to shellfish" in prompt
 

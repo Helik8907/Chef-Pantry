@@ -18,6 +18,20 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 
+def _clean_schema_for_gemini(schema: Any) -> Any:
+    """Recursively strip additionalProperties and incompatible fields for Gemini Developer API."""
+    if isinstance(schema, dict):
+        cleaned = {}
+        for k, v in schema.items():
+            if k in ("additionalProperties", "additional_properties"):
+                continue
+            cleaned[k] = _clean_schema_for_gemini(v)
+        return cleaned
+    elif isinstance(schema, list):
+        return [_clean_schema_for_gemini(item) for item in schema]
+    return schema
+
+
 class _RetryableServerError(Exception):
     """Internal sentinel exception for transient 5xx server errors."""
     pass
@@ -29,12 +43,12 @@ class GeminiLLMProvider(LLMProvider):
     def __init__(
         self,
         api_key: str,
-        model_extraction: str = "gemini-2.5-flash",
-        model_chef: str = "gemini-2.5-flash",
+        model_extraction: str = "gemini-3.8-flash",
+        model_chef: str = "gemini-3.8-flash",
         temperature_extraction: float = 0.1,
         temperature_chef: float = 0.7,
         max_output_tokens: int = 2048,
-        timeout_seconds: float = 30.0,
+        timeout_seconds: float = 20.0,
     ) -> None:
         if not api_key:
             raise ValueError("api_key must not be empty.")
@@ -71,7 +85,7 @@ class GeminiLLMProvider(LLMProvider):
 
         if "429" in err_str or "resource_exhausted" in err_str or "rate limit" in err_str:
             return LLMRateLimitError(f"Gemini rate limit: {exc}")
-        if any(c in err_str for c in ["500", "502", "503", "504", "internal server error", "unavailable"]):
+        if any(c in err_str for c in ["500", "502", "503", "504", "internal server error", "unavailable", "timed out", "timeout"]):
             return _RetryableServerError(f"Transient server error: {exc}")
 
         return LLMError(f"Gemini API failure: {exc}")
@@ -88,7 +102,7 @@ class GeminiLLMProvider(LLMProvider):
         try:
             return run_with_backoff(
                 wrapped,
-                max_attempts=3,
+                max_attempts=2,
                 base_delay=0.5,
                 retryable_exceptions=(LLMRateLimitError, _RetryableServerError),
             )
@@ -108,13 +122,23 @@ class GeminiLLMProvider(LLMProvider):
         target_temp = temperature if temperature is not None else self.temperature_extraction
         target_max_tokens = self.max_output_tokens
 
+        # In Gemini Developer API mode, additionalProperties is rejected.
+        # Clean the Pydantic schema dictionary before passing it to GenerateContentConfig.
+        if isinstance(schema, type) and issubclass(schema, BaseModel):
+            prepared_schema = _clean_schema_for_gemini(schema.model_json_schema())
+        elif isinstance(schema, dict):
+            prepared_schema = _clean_schema_for_gemini(schema)
+        else:
+            prepared_schema = schema
+
         def _call_gemini(tokens_limit: int) -> Any:
             config = types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=schema,
+                response_schema=prepared_schema,
                 temperature=target_temp,
                 max_output_tokens=tokens_limit,
                 system_instruction=system,
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
             )
             return self._execute_with_retry(
                 lambda: self._client.models.generate_content(
@@ -173,6 +197,7 @@ class GeminiLLMProvider(LLMProvider):
             temperature=target_temp,
             max_output_tokens=self.max_output_tokens,
             system_instruction=system,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         )
 
         response = self._execute_with_retry(

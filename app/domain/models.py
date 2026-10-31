@@ -126,17 +126,86 @@ class UserSettings(BaseModel):
 
 
 class User(MongoBaseModel):
-    """User profile record with unique handle and configuration settings."""
+    """User profile record with unique handle, email, and configuration settings."""
     id: str = Field(default_factory=generate_object_id, alias="_id", description="MongoDB ObjectId string.")
     user_id: str = Field(..., description="Unique user handle.")
+    email: Optional[str] = Field(default=None, description="User email address.")
     display_name: str = Field(..., description="Human-readable user display name.")
+    password_hash: Optional[str] = Field(default=None, exclude=True, description="Salted PBKDF2 password hash.")
     created_at: datetime = Field(default_factory=utc_now, description="Account creation timestamp in UTC.")
+    updated_at: Optional[datetime] = Field(default=None, description="Last update timestamp in UTC.")
     settings: UserSettings = Field(default_factory=UserSettings, description="User specific settings.")
+
+    @field_validator("email")
+    @classmethod
+    def validate_user_email(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v = v.strip().lower()
+            if "@" not in v or "." not in v:
+                raise ValueError("Invalid email format.")
+        return v
 
     @field_validator("created_at")
     @classmethod
     def validate_user_created_at(cls, v: datetime) -> datetime:
         return ensure_timezone_aware(v)
+
+    @field_validator("updated_at")
+    @classmethod
+    def validate_user_updated_at(cls, v: Optional[datetime]) -> Optional[datetime]:
+        return ensure_timezone_aware(v)
+
+
+class UserLoginRequest(BaseModel):
+    """Payload schema for email and password authentication."""
+    model_config = ConfigDict(populate_by_name=True)
+
+    email: str = Field(..., min_length=3, description="User email address.")
+    password: str = Field(..., min_length=1, description="Account password.")
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
+
+
+class UserRegisterRequest(BaseModel):
+    """Payload schema for registering a new user with email and password."""
+    model_config = ConfigDict(populate_by_name=True)
+
+    email: str = Field(..., min_length=3, description="User email address.")
+    password: str = Field(..., min_length=6, description="Account password (minimum 6 characters).")
+    display_name: str = Field(..., min_length=1, max_length=100, description="Human-readable user display name.")
+    user_id: Optional[str] = Field(default=None, min_length=1, max_length=100, description="Optional unique user handle.")
+    settings: Optional[UserSettings] = Field(default=None, description="Optional user preferences.")
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if "@" not in v or "." not in v:
+            raise ValueError("Invalid email format.")
+        return v
+
+
+class TokenResponse(BaseModel):
+    """Response schema upon successful authentication."""
+    access_token: str = Field(..., description="Cryptographically signed session access token.")
+    token_type: str = Field(default="bearer", description="Token schema type.")
+    user: User = Field(..., description="Authenticated user profile.")
+
+
+class LogoutResponse(BaseModel):
+    """Response schema for logout action."""
+    status: str = Field(default="logged_out", description="Logout operation status.")
+    user_id: str = Field(..., description="Logged out user identifier.")
+
+
+class DeleteAccountResponse(BaseModel):
+    """Response schema for account deletion."""
+    status: str = Field(default="deleted", description="Operation status.")
+    user_id: str = Field(..., description="Identifier of the deleted account.")
+    cascade: bool = Field(default=True, description="Whether all user memories and messages were deleted.")
 
 
 # ============================================================================
@@ -264,8 +333,8 @@ class Memory(MongoBaseModel):
     @model_validator(mode="after")
     def apply_lifecycle_and_allergy_rules(self) -> "Memory":
         if self.type == MemoryType.ALLERGY:
-            self.protected = True
-            self.expires_at = None
+            object.__setattr__(self, "protected", True)
+            object.__setattr__(self, "expires_at", None)
 
         if self.status == MemoryStatus.SUPERSEDED and not self.superseded_by:
             raise ValueError("When status is 'superseded', 'superseded_by' must be provided.")

@@ -20,6 +20,7 @@ EXTRACTION GUIDELINES:
 4. FORMAT:
    - Output valid JSON strictly matching the requested ExtractionResult schema.
    - Provide clean, normalized tags and clear memory text.
+   - Write each candidate's `text` as plain text without Markdown headings, emphasis, or list markers; memory text is stored and embedded separately from chat responses.
 
 RECENT CONVERSATION CONTEXT:
 {recent_context}

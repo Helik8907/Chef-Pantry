@@ -26,6 +26,10 @@ class ChefResponseSchema(BaseModel):
 
     answer: str = Field(..., description="Culinary suggestions and guidance.")
     memory_ids_used: list[str] = Field(default_factory=list, description="IDs of memories referenced.")
+    important_things_to_remember: list[str] = Field(
+        default_factory=list,
+        description="Key culinary facts, preferences, recipes, or notes mentioned to embed and store.",
+    )
 
 
 class ChefResult(BaseModel):
@@ -36,6 +40,10 @@ class ChefResult(BaseModel):
     memory_ids_used: list[str] = Field(default_factory=list, description="Validated memory IDs cited.")
     safety_findings: list[SafetyFinding] = Field(default_factory=list, description="Allergen findings if detected.")
     regenerated: bool = Field(default=False, description="Whether safety regeneration was performed.")
+    important_things_to_remember: list[str] = Field(
+        default_factory=list,
+        description="Important things from response to be embedded and remembered.",
+    )
 
 
 class Chef:
@@ -55,14 +63,18 @@ class Chef:
         self.temperature = (
             temperature if temperature is not None else getattr(config, "LLM_TEMPERATURE_CHEF", 0.7)
         )
-        self.model = model or getattr(config, "GEMINI_MODEL_CHEF", "gemini-2.5-flash")
+        self.model = model or config.GEMINI_MODEL
 
     def _format_always_applied(self, always_applied: list[Memory]) -> str:
         if not always_applied:
-            return "(No hard constraints registered)"
+            return "(No saved allergies or dietary preferences)"
         lines: list[str] = []
         for mem in always_applied:
-            lines.append(f"- [id: {mem.id}] (ALLERGY) {mem.text}")
+            if mem.type == MemoryType.ALLERGY:
+                label = "ALLERGY — HARD CONSTRAINT"
+            else:
+                label = "DIETARY / FOOD PREFERENCE — ALWAYS CONSIDER"
+            lines.append(f"- [id: {mem.id}] ({label}) {mem.text}")
         return "\n".join(lines)
 
     def _format_recalled_memories(self, recalled: list[RecalledMemory]) -> str:
@@ -88,18 +100,21 @@ class Chef:
         return "\n".join(turns)
 
     def _append_attribution(self, answer: str, used_ids: list[str], valid_id_map: dict[str, Memory]) -> str:
-        """Ensure a short 'Because I remembered...' line is included in the answer."""
-        if "Because I remembered" in answer:
+        """Ensure 'I remembered that...' is naturally included when memories are in context."""
+        lower_ans = answer.lower()
+        if "because i remembered" in lower_ans or "i remembered that" in lower_ans:
             return answer
 
         if used_ids:
             recalled_phrases = [valid_id_map[uid].text for uid in used_ids if uid in valid_id_map]
-            attribution_text = "; ".join(recalled_phrases[:3])
-            attribution_line = f"\n\nBecause I remembered: {attribution_text}."
-        else:
-            attribution_line = "\n\nBecause I remembered: your cooking preferences and dietary constraints."
+            attribution_text = "; ".join(recalled_phrases[:3]) if recalled_phrases else "your dietary constraints"
+            attribution_line = f"\n\nBecause I remembered that: {attribution_text}."
+            return answer.strip() + attribution_line
+        elif valid_id_map:
+            attribution_line = "\n\nBecause I remembered that: your cooking preferences and dietary constraints."
+            return answer.strip() + attribution_line
 
-        return answer.strip() + attribution_line
+        return answer
 
     def generate(
         self,
@@ -144,6 +159,7 @@ class Chef:
 
         # Validate returned IDs against provided IDs
         validated_used_ids = [mid for mid in response.memory_ids_used if mid in valid_id_map]
+        important_things = getattr(response, "important_things_to_remember", []) or []
 
         # First safety check
         initial_findings = check_allergen_conflicts(response.answer, active_allergies_list)
@@ -155,6 +171,7 @@ class Chef:
                 memory_ids_used=validated_used_ids,
                 safety_findings=[],
                 regenerated=False,
+                important_things_to_remember=important_things,
             )
 
         # Regeneration loop
@@ -180,6 +197,7 @@ class Chef:
         )
 
         regen_used_ids = [mid for mid in regen_response.memory_ids_used if mid in valid_id_map]
+        regen_important_things = getattr(regen_response, "important_things_to_remember", []) or []
         second_findings = check_allergen_conflicts(regen_response.answer, active_allergies_list)
 
         if second_findings:
@@ -197,6 +215,7 @@ class Chef:
                 memory_ids_used=regen_used_ids,
                 safety_findings=second_findings,
                 regenerated=True,
+                important_things_to_remember=[],
             )
 
         # Regeneration succeeded cleanly
@@ -206,4 +225,5 @@ class Chef:
             memory_ids_used=regen_used_ids,
             safety_findings=[],
             regenerated=True,
+            important_things_to_remember=regen_important_things,
         )

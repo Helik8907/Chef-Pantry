@@ -122,7 +122,7 @@ POLICIES: dict[MemoryType, TypePolicy] = {
         requires_confirmation_to_change=False,
         type_priority=0.8,
         recency_half_life_days=180.0,
-        always_apply=False,
+        always_apply=True,
     ),
     MemoryType.MEAL_OUTCOME: TypePolicy(
         ttl=None,
@@ -138,7 +138,7 @@ POLICIES: dict[MemoryType, TypePolicy] = {
         protected=False,
         auto_supersede_allowed=True,
         requires_confirmation_to_change=False,
-        type_priority=0.4,
+        type_priority=0.2,
         recency_half_life_days=3.0,
         always_apply=False,
     ),

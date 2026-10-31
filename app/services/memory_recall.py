@@ -1,4 +1,4 @@
-"""Memory recall service orchestrating vector retrieval, allergies, and lifecycle filtering."""
+"""Memory recall service orchestrating vector retrieval, profile constraints, and lifecycle filtering."""
 
 from datetime import datetime
 import logging
@@ -50,7 +50,7 @@ class RecallResult(BaseModel):
     )
     always_applied: list[Memory] = Field(
         default_factory=list,
-        description="Always-applied memories (such as active allergies) regardless of similarity.",
+        description="Always-applied allergies and dietary preferences regardless of similarity.",
     )
     matched_filters: dict[str, Any] = Field(
         default_factory=dict,
@@ -88,7 +88,7 @@ class MemoryRecall:
         limit: int = 5,
         memory_types: Optional[list[str]] = None,
     ) -> RecallResult:
-        """Recall relevant memories for user query with allergy guardrails and safety exclusions."""
+        """Recall relevant memories with persistent allergy and preference context."""
         # 1. Respect user memory_enabled setting
         if self.user_lookup is not None:
             user = self.user_lookup(user_id)
@@ -107,13 +107,17 @@ class MemoryRecall:
             "types": memory_types,
         }
 
-        # 2. Always fetch active allergies
-        raw_allergies = self.repository.get_active_by_type(user_id=user_id, memory_type="allergy")
+        # 2. Always fetch active allergies and dietary preferences, independent of vector ranking.
         always_applied: list[Memory] = []
-        for doc in raw_allergies:
-            mem = _dict_to_memory(doc)
-            if mem.is_active(now):
-                always_applied.append(mem)
+        for memory_type in (MemoryType.ALLERGY, MemoryType.PREFERENCE):
+            raw_profile_memories = self.repository.get_active_by_type(
+                user_id=user_id,
+                memory_type=memory_type,
+            )
+            for doc in raw_profile_memories:
+                mem = _dict_to_memory(doc)
+                if mem.is_active(now):
+                    always_applied.append(mem)
 
         # 3. Vector search candidates
         try:

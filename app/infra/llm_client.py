@@ -82,8 +82,8 @@ def get_llm_provider(settings: Any = None) -> LLMProvider:
 
         _cached_llm_provider = GeminiLLMProvider(
             api_key=api_key,
-            model_extraction=getattr(settings, "GEMINI_MODEL_EXTRACTION", config.GEMINI_MODEL_EXTRACTION),
-            model_chef=getattr(settings, "GEMINI_MODEL_CHEF", config.GEMINI_MODEL_CHEF),
+            model_extraction=config.GEMINI_MODEL,
+            model_chef=config.GEMINI_MODEL,
             temperature_extraction=getattr(settings, "LLM_TEMPERATURE_EXTRACTION", config.LLM_TEMPERATURE_EXTRACTION),
             temperature_chef=getattr(settings, "LLM_TEMPERATURE_CHEF", config.LLM_TEMPERATURE_CHEF),
             max_output_tokens=getattr(settings, "LLM_MAX_OUTPUT_TOKENS", config.LLM_MAX_OUTPUT_TOKENS),

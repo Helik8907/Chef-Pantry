@@ -34,7 +34,7 @@ class MemoryExtractor:
         self.temperature = (
             temperature if temperature is not None else getattr(config, "LLM_TEMPERATURE_EXTRACTION", 0.1)
         )
-        self.model = model or getattr(config, "GEMINI_MODEL_EXTRACTION", "gemini-2.5-flash")
+        self.model = model or config.GEMINI_MODEL
 
     def extract(
         self,

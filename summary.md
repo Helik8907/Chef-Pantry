@@ -1,10 +1,10 @@
-# Project Summary: Memory Chef
+# Project Summary: Chef
 
 ## 1. Project Overview
-**Memory Chef** is an AI-assisted culinary assistant built with Python, Streamlit, and MongoDB. The system features advanced episodic and semantic memory management to deliver tailored culinary interactions, recipes, and dietary planning.
+**Chef** is an AI-assisted culinary assistant built with Python, Streamlit, and MongoDB. The system features advanced episodic and semantic memory management to deliver tailored culinary interactions, recipes, and dietary planning.
 
 Key architectural pillars:
-- **UI Layer (`app/ui/`)**: Interactive Streamlit frontend featuring chat interactions, memory inspection, and dynamic memory retrieval visualization.
+- **UI Layer (`app/ui/`)**: Conversational Streamlit frontend featuring ChatGPT/Gemini-style chat interactions, session management, and dynamic memory retrieval visualization.
 - **Service Layer (`app/services/`)**: Orchestration of conversation flows, culinary prompt synthesis, memory extraction, memory storage, lifecycle management, conflict detection, and memory recall.
 - **Domain Layer (`app/domain/`)**: Core entities, memory scoring/ranking algorithms, safety filters, and operational policies.
 - **Infrastructure Layer (`app/infra/`)**: MongoDB memory repository, LLM clients (Anthropic Claude / mock fallbacks), and vector embedding providers.
@@ -30,12 +30,15 @@ Key architectural pillars:
 │   ├── __init__.py
 │   ├── api/
 │   │   ├── __init__.py
+│   │   ├── deps.py
 │   │   ├── main.py
 │   │   └── routes/
 │   │       ├── __init__.py
+│   │       ├── auth.py
 │   │       ├── chat.py
 │   │       ├── demo.py
-│   │       └── memories.py
+│   │       ├── memories.py
+│   │       └── users.py
 │   ├── domain/
 │   │   ├── __init__.py
 │   │   ├── models.py
@@ -46,18 +49,25 @@ Key architectural pillars:
 │   ├── infra/
 │   │   ├── __init__.py
 │   │   ├── config.py
+│   │   ├── db.py
 │   │   ├── embedding_provider.py
 │   │   ├── llm_client.py
 │   │   ├── memory_repository.py
-│   │   └── providers/
+│   │   ├── providers/
+│   │   │   ├── __init__.py
+│   │   │   ├── auto_embedding.py
+│   │   │   ├── base.py
+│   │   │   ├── claude_llm.py
+│   │   │   ├── gemini_llm.py
+│   │   │   ├── mock_embedding.py
+│   │   │   ├── mock_llm.py
+│   │   │   └── self_embedding.py
+│   │   └── repositories/
 │   │       ├── __init__.py
-│   │       ├── auto_embedding.py
 │   │       ├── base.py
-│   │       ├── claude_llm.py
-│   │       ├── gemini_llm.py
-│   │       ├── mock_embedding.py
-│   │       ├── mock_llm.py
-│   │       └── self_embedding.py
+│   │       ├── memory_repository.py
+│   │       ├── message_repository.py
+│   │       └── user_repository.py
 │   ├── prompts/
 │   │   ├── chef_answer.txt
 │   │   ├── conflict_check.txt
@@ -65,6 +75,7 @@ Key architectural pillars:
 │   │   └── safety_regenerate.txt
 │   ├── services/
 │   │   ├── __init__.py
+│   │   ├── auth.py
 │   │   ├── chef.py
 │   │   ├── chat_orchestrator.py
 │   │   ├── conflict.py
@@ -76,20 +87,23 @@ Key architectural pillars:
 │   └── ui/
 │       ├── __init__.py
 │       ├── main.py
-│       ├── components/
-│       │   ├── __init__.py
-│       │   ├── chat_panel.py
-│       │   ├── memories_used_panel.py
-│       │   └── sidebar.py
-│       └── pages/
+│       └── components/
 │           ├── __init__.py
-│           └── memory_inspector.py
+│           ├── auth_view.py
+│           ├── chat_panel.py
+│           ├── memories_used_panel.py
+│           ├── memory_management.py
+│           └── sidebar.py
 ├── scripts/
 │   ├── create_indexes.py
 │   ├── reset_demo.py
 │   └── seed_demo_data.py
 ├── tests/
 │   ├── __init__.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── test_auth_routes.py
+│   │   └── test_chat_routes.py
 │   ├── domain/
 │   │   ├── __init__.py
 │   │   ├── test_policies.py
@@ -101,6 +115,7 @@ Key architectural pillars:
 │   │   └── test_embedding_strategies.py
 │   └── services/
 │       ├── __init__.py
+│       ├── test_auth.py
 │       ├── test_generation.py
 │       ├── test_lifecycle.py
 │       ├── test_memory_recall.py
@@ -119,12 +134,12 @@ Key architectural pillars:
 ### Component Details
 | Directory / File | Description |
 |---|---|
-| `app/ui/` | Streamlit entrypoint (`main.py`), reusable chat/memory UI panels, and memory inspector page |
+| `app/ui/` | Streamlit entrypoint (`main.py`) and modular components (`chat_panel`, `sidebar`, `auth_view`, `memory_management`) |
 | `app/services/` | Business logic for chat orchestration, memory extraction, storage, recall, lifecycle, and conflict detection |
 | `app/domain/` | Domain models, memory policies, ranking logic, and safety guardrails |
-| `app/infra/` | MongoDB repository integration, application configuration, LLM clients, and vector embedding providers |
+| `app/infra/` | MongoDB repository integration (`app/infra/repositories/`), database connector (`app/infra/db.py`), application config, LLM clients, and vector providers |
 | `app/prompts/` | System text prompt templates for extraction, chef answering, conflict resolution, and safety verification |
-| `app/api/` | Placeholder for future FastAPI endpoints |
+| `app/api/` | FastAPI backend service with dependency injection and routes (`app/api/main.py`, `app/api/deps.py`, `app/api/routes/users.py`) |
 | `web/` | Placeholder for future static web frontend assets |
 | `scripts/` | Database index creation, mock data seeding, and test state reset scripts |
 | `tests/` | Unit tests for domain models/policies and service workflows |
@@ -132,6 +147,173 @@ Key architectural pillars:
 ---
 
 ## 3. Project Changelog & Recent Updates
+- **2026-10-31 (Sidebar-Driven Memory Management Page Routing)**:
+  - Added dedicated `🧠 Memory Management` button in [`app/ui/components/sidebar.py`](file:///e:/Project/Chef-Pantry/app/ui/components/sidebar.py) with active state highlighting.
+  - Removed top-level tab navigation from [`app/ui/main.py`](file:///e:/Project/Chef-Pantry/app/ui/main.py) to keep the main view clean and distraction-free.
+  - Implemented dynamic view routing: Clicking `🧠 Memory Management` in the sidebar renders the full Memory Management page on the main stage, while clicking `➕ New Chat` or any past conversation switches back to the Culinary Chat.
+  - Added an in-page `← Back to Chat` header button in [`app/ui/components/memory_management.py`](file:///e:/Project/Chef-Pantry/app/ui/components/memory_management.py) for easy one-click return.
+- **2026-10-31 (Dedicated Memory Management View & Sidebar Decluttering)**:
+  - Removed the bulky sidebar memory manager (`🧠 Manage Memories`) from [`app/ui/components/sidebar.py`](file:///e:/Project/Chef-Pantry/app/ui/components/sidebar.py), restoring the ChatGPT/Claude layout.
+  - Implemented dedicated **Memory Management** view component in [`app/ui/components/memory_management.py`](file:///e:/Project/Chef-Pantry/app/ui/components/memory_management.py).
+  - Mounted dual-tab navigation in [`app/ui/main.py`](file:///e:/Project/Chef-Pantry/app/ui/main.py) (`💬 Culinary Chat` & `🧠 Memory Management`).
+  - Added summary KPI cards (Active Memories, Protected Allergies, Taste Preferences, Pantry Items), real-time keyword search, type and status dropdown filters, formatted memory cards, and one-click `🗑️ Forget` soft deletion.
+  - Ensured complete credential and technical ID sanitization across all memory view cards and tooltips.
+- **2026-10-31 (Three Recipes and Persistent Preference Context)**:
+  - Required exactly three concise recipe options in every food/cooking answer, including direct dish questions.
+  - Made active dietary preferences always available to Chef alongside allergies, so each recipe is checked against saved diets and dislikes even when vector search would not rank those memories.
+- **2026-10-31 (Memory Management UI and Pantry-Aware Recipe Suggestions)**:
+  - Added a sidebar memory manager with manual memory creation, saved memory listing (including superseded memories), and confirmation-gated soft deletion through the lifecycle service.
+  - Lowered pantry memory type priority and updated Chef's prompt to balance pantry ingredients with additional ingredients, including clear shopping notes.
+- **2026-10-31 (Session ID & Technical Credentials Removal from UI)**:
+  - Sanitized the sidebar interface in [`app/ui/components/sidebar.py`](file:///e:/Project/Chef-Pantry/app/ui/components/sidebar.py) to prevent technical identifiers and credentials from appearing anywhere in the user interface.
+  - Removed hover tooltips displaying `Session ID: <sid>` on past conversation buttons.
+  - Replaced button label fallbacks (`sid[:12]` and `Chat <sid[:8]>`) with clean conversational titles (`Conversation (<count>)` or `Conversation`).
+  - Removed internal `User ID` display caption from the user profile dropdown, retaining only user-friendly name and email.
+  - Removed internal database and vector index status diagnostic captions from user profile view.
+- **2026-10-31 (Markdown Chat Answers with Plain Text Memory Embeddings)**:
+  - Updated Chef and safety regeneration prompts to format chat answers as readable Markdown, including titled recipes, ingredient bullets, and numbered steps.
+  - Added Markdown-to-plain-text normalization before memory persistence and query embedding; extraction and remembered-note prompts now request plain memory text.
+- **2026-10-31 (Shorter Gemini Failure Wait)**:
+  - Reduced the default Gemini request timeout from 60 seconds to 20 seconds.
+  - Limited transient Gemini failures to two total attempts (one retry), so 504 errors surface to the chat sooner.
+- **2026-10-31 (Unified Gemini Model Configuration)**:
+  - Configured both extraction and Chef response generation to use the shared `MODEL` environment setting through `GEMINI_MODEL`.
+  - Removed the separate `GEMINI_MODEL_EXTRACTION` and `GEMINI_MODEL_CHEF` settings from `.env`, `.env.development`, and `.env.example`.
+- **2026-10-31 (Defensive Auth Error Handling for Atlas Connection / IP Firewall Errors)**:
+  - Updated [`app/ui/components/auth_view.py`](file:///e:/Project/Chef-Pantry/app/ui/components/auth_view.py) with comprehensive try/except error boundaries intercepting `ServerSelectionTimeoutError` and `ConnectionFailure` during Sign In and Sign Up.
+  - Formatted user-facing `st.error` messages instructing the user to check their MongoDB Atlas Network Access IP whitelist when SSL handshake or timeout failures occur.
+  - Rebranded authentication headings to `"🍳 Chef"` and `"New to Chef?"`.
+- **2026-10-31 (Gemini API Timeout Resiliency & AFC Warning Elimination)**:
+  - Increased default LLM timeout from 30.0s to 60.0s in [`app/infra/config.py`](file:///e:/Project/Chef-Pantry/app/infra/config.py) and [`GeminiLLMProvider`](file:///e:/Project/Chef-Pantry/app/infra/providers/gemini_llm.py) to prevent premature read timeouts during complex structured generation.
+  - Updated `_map_error` in [`GeminiLLMProvider`](file:///e:/Project/Chef-Pantry/app/infra/providers/gemini_llm.py) to classify socket read timeouts and timeout errors as retryable `_RetryableServerError`, allowing automatic exponential backoff retries.
+  - Disabled automatic function calling via `types.AutomaticFunctionCallingConfig(disable=True)` across `structured_output` and `generate_text`, eliminating the warning log on standard generations.
+- **2026-10-31 (Console Logging for Route & Page Visits)**:
+  - Added HTTP middleware in [`app/api/main.py`](file:///e:/Project/Chef-Pantry/app/api/main.py) to log every incoming API request with method, path, response status, and execution duration in ms (`[ROUTE VISIT] GET /api/health -> 200 (1.2ms)`).
+  - Added view/page access console logging in [`app/ui/main.py`](file:///e:/Project/Chef-Pantry/app/ui/main.py) for the Auth View (`[PAGE VISIT] 🔑 Auth View (Sign In / Register)`) and the Culinary Chat (`[PAGE VISIT] 💬 Culinary Chat | User: <user_id> | Session: <session_id>`).
+  - Added session and authentication navigation logging in [`app/ui/components/sidebar.py`](file:///e:/Project/Chef-Pantry/app/ui/components/sidebar.py) and [`app/ui/components/auth_view.py`](file:///e:/Project/Chef-Pantry/app/ui/components/auth_view.py) for session switching, new chat creation, session deletion, login, and logout.
+- **2026-10-31 (Gemini 3.8 Flash Upgrade & Developer API Schema Sanitization)**:
+  - Upgraded default extraction and generation models from deprecated `gemini-2.5-flash` to **`gemini-3.8-flash`** across [`app/infra/config.py`](file:///e:/Project/Chef-Pantry/app/infra/config.py), [`app/infra/providers/gemini_llm.py`](file:///e:/Project/Chef-Pantry/app/infra/providers/gemini_llm.py), [`app/services/extraction.py`](file:///e:/Project/Chef-Pantry/app/services/extraction.py), [`app/services/chef.py`](file:///e:/Project/Chef-Pantry/app/services/chef.py), `.env`, `.env.development`, and `.env.example`, resolving the `404 NOT_FOUND` API error.
+  - Implemented `_clean_schema_for_gemini` in [`app/infra/providers/gemini_llm.py`](file:///e:/Project/Chef-Pantry/app/infra/providers/gemini_llm.py) to recursively strip `additionalProperties` from Pydantic JSON schemas before passing to `GenerateContentConfig(response_schema=...)`, eliminating the Developer API mode schema rejection for models with dictionary fields (e.g. `CandidateMemory.structured`).
+  - Verified 100% clean test execution across all 126 unit tests.
+- **2026-10-31 (Updated Conversation Starter Prompts)**:
+  - Updated new-chat starter prompts in [`app/ui/components/chat_panel.py`](file:///e:/Project/Chef-Pantry/app/ui/components/chat_panel.py) with customized suggestions:
+    - 🍽️ "What should I cook for dinner tonight?"
+    - 🥗 "Suggest a quick healthy lunch"
+    - 🍳 "I have eggs, spinach and paneer. What can I make?"
+    - 🥔 "Give me an easy snack idea"
+- **2026-10-31 (MongoDB Unique Email Index & Duplicate Prevention)**:
+  - Added unique sparse index on `users.email` (`self.db.users.create_index([("email", 1)], unique=True, sparse=True, background=True)`) in [`MemoryRepository.ensure_indexes`](file:///e:/Project/Chef-Pantry/app/infra/repositories/memory_repository.py#L246-L252) and provisioned it directly in MongoDB Atlas (`email_1`).
+  - Updated [`UserRepository.upsert_user`](file:///e:/Project/Chef-Pantry/app/infra/repositories/user_repository.py#L45-L75) to intercept `pymongo.errors.DuplicateKeyError` and raise a clear `ValueError("An account with email '...' already exists.")`.
+  - Updated [`app/api/routes/users.py`](file:///e:/Project/Chef-Pantry/app/api/routes/users.py) `POST /api/users` endpoint to validate email uniqueness and translate constraint errors into `409 Conflict` responses.
+  - Verified duplicate email rejection against live MongoDB Atlas cluster and confirmed all 78 tests pass.
+- **2026-10-31 (Rebranding to "Chef", Natural Conversational Flow & Response Embedding)**:
+  - Rebranded the application from "Memory Chef" to **"Chef"** across the Streamlit UI ([`app/ui/main.py`](file:///e:/Project/Chef-Pantry/app/ui/main.py), [`app/ui/components/sidebar.py`](file:///e:/Project/Chef-Pantry/app/ui/components/sidebar.py), [`app/ui/components/chat_panel.py`](file:///e:/Project/Chef-Pantry/app/ui/components/chat_panel.py)), system prompt templates, and project documentation.
+  - Refined the prompt instructions in [`app/prompts/chef_answer.txt`](file:///e:/Project/Chef-Pantry/app/prompts/chef_answer.txt) and attribution logic in [`app/services/chef.py`](file:///e:/Project/Chef-Pantry/app/services/chef.py) to provide a natural, conversational experience (like ChatGPT / Gemini).
+  - Configured prompt and assistant attribution to naturally weave in `"I remembered that..."` (e.g. allergies, preferences, likes, pantry stock) whenever relevant memories are retrieved via vector search.
+  - Extended [`ChefResponseSchema`](file:///e:/Project/Chef-Pantry/app/services/chef.py#L23-L33) and [`ChefResult`](file:///e:/Project/Chef-Pantry/app/services/chef.py#L34-L44) with `important_things_to_remember` to extract key culinary facts, recipes, and preferences from assistant responses.
+  - Updated [`ChatOrchestrator`](file:///e:/Project/Chef-Pantry/app/services/chat_orchestrator.py) to embed and persist key facts from the assistant's response into MongoDB via [`MemoryStore`](file:///e:/Project/Chef-Pantry/app/services/memory_store.py) for future session recall.
+- **2026-10-31 (Streamlined Conversational UI & Memory Inspector Removal)**:
+  - Removed administrative `Memory Inspector` page (`app/ui/pages/memory_inspector.py`) and deleted `app/ui/pages/`.
+  - Updated `app/ui/main.py` to remove tabbed navigation, rendering `render_chat_panel` directly as a full-width, clean conversational experience aligned with Gemini and ChatGPT.
+  - Retained fully autonomous background memory extraction, conflict checking, TTL expiration, and cross-session memory recall within `ChatOrchestrator`, `MemoryStore`, and `MemoryRecall` without exposing raw internal database operations to end users.
+  - Synchronized `README.md` and `summary.md` directory trees and architectural references.
+- **2026-10-31 (Authentication Module, Routes & Account Management)**:
+  - Extended domain `User` model in `app/domain/models.py` with `email`, `password_hash` (`Field(exclude=True)`), `updated_at`, and auth request/response schemas (`UserLoginRequest`, `UserRegisterRequest`, `TokenResponse`, `LogoutResponse`, `DeleteAccountResponse`).
+  - Implemented core authentication services in `app/services/auth.py`:
+    - `hash_password`: Salted PBKDF2-HMAC-SHA256 password hashing with 100,000 iterations.
+    - `verify_password`: Constant-time comparison protecting against timing attacks.
+    - `create_access_token` & `verify_access_token`: Cryptographically signed HMAC-SHA256 bearer session tokens.
+    - `authenticate_user`: Credential verification by email and password.
+    - `register_user`: Registration with email uniqueness check, handle sanitization/auto-generation, and password hashing.
+    - `delete_user_account`: Permanent account deletion with cascade cleanup of memories and messages.
+  - Updated `UserRepository` (`app/infra/repositories/user_repository.py`) and facade (`app/infra/memory_repository.py`) to query users by email and persist `password_hash`.
+  - Added REST API authentication routes in `app/api/routes/auth.py` mounted at `/api/auth`:
+    - `POST /api/auth/register` (register with email, password, display name)
+    - `POST /api/auth/login` (authenticate with email and password, returning bearer token)
+    - `POST /api/auth/logout` (session termination acknowledgement)
+    - `GET /api/auth/me` (get profile for bearer token user)
+    - `DELETE /api/auth/account` (delete authenticated user account with cascade)
+  - Implemented Streamlit UI authentication flow:
+    - Created `app/ui/components/auth_view.py` providing interactive Sign In and Sign Up tabs with masked password inputs and validation.
+    - Updated `app/ui/main.py` with authentication gate: Unauthenticated visitors must sign in before accessing the Culinary Chat or Memory Inspector.
+    - Updated `app/ui/components/sidebar.py` to display authenticated user email/handle, handle logout via session state reset, and provide an account deletion "Danger Zone" with confirmation.
+  - Added comprehensive offline test coverage:
+    - `tests/services/test_auth.py`: 9 unit tests verifying hashing, verification, token encoding, registration, email login, and deletion.
+    - `tests/api/test_auth_routes.py`: 6 unit tests verifying `/register`, `/login`, `/logout`, `/me`, and `/account` route handlers.
+- **2026-10-31 (User Document Deserialization Fix in Sidebar)**:
+  - Updated `app/ui/components/sidebar.py` to defensively deserialize the MongoDB `dict` returned by `UserRepository.get_user` into a Pydantic `User` model (`User.model_validate(raw_user)`).
+  - Resolved `AttributeError: 'dict' object has no attribute 'display_name'`.
+  - Removed obsolete `auto_supersede_confirmed` field from `UserSettings` reconstruction.
+- **2026-10-31 (Modern Chatbot UI Layout Restructuring)**:
+  - Restructured `app/ui/components/sidebar.py` to match ChatGPT/Claude layouts:
+    - Prominent `➕ New Chat` primary action button at the top.
+    - Chronological, clickable past conversation list with active session highlighting and inline `🗑️` deletion buttons.
+    - User profile footer with handle display, expandable memory and unit preferences, database status indicator, and `🚪 Log Out` button.
+  - Updated `app/ui/components/chat_panel.py`:
+    - Clean default "New Chat" screen featuring a welcoming hero banner and 4 quick-prompt suggestion cards (vegetarian dinner, allergy declaration, pantry cook, and feedback reporting).
+    - Automatic history loading when selecting previous sessions from the sidebar.
+    - Compact, non-intrusive `🧠 Memories Recalled` collapsible expanders directly beneath assistant replies displaying recalled dietary/taste memories and reasoning.
+  - Updated `app/ui/main.py`:
+    - Dedicated authentication screen (`render_login_view`) for user handle input upon logout.
+    - Full-width modern chat experience with clean tab navigation to Memory Inspector.
+- **2026-10-31 (Streamlit sys.path Root Resolution Fix)**:
+  - Added project root resolution (`sys.path.insert(0, str(ROOT_DIR))`) to `app/ui/main.py` and `app/ui/pages/memory_inspector.py`.
+  - Resolves `ModuleNotFoundError: No module named 'app'` when running `streamlit run app/ui/main.py` directly from any working directory.
+- **2026-10-31 (Streamlit Frontend Implementation & Dependency Setup)**:
+  - Added `streamlit>=1.30.0` to `requirements.txt` and installed `streamlit 1.66.1` into the project virtual environment.
+  - Implemented the modular Streamlit frontend:
+    - `app/ui/main.py`: Main application controller with `@st.cache_resource` container initialization, dual-tab layout (Culinary Chat & Memory Inspector), and responsive split view.
+    - `app/ui/components/sidebar.py`: User profile selection/creation (`demo_user` default), unit preferences (`metric`/`imperial`), memory retrieval toggle, chat session manager (`➕ New Chat Session`, session history picker), and live database/vector status diagnostics.
+    - `app/ui/components/chat_panel.py`: Multi-turn chat message rendering, `st.chat_input`, `orchestrator.handle_message` execution, and interactive approval/rejection widgets for `pending_confirmations`.
+    - `app/ui/components/memories_used_panel.py`: Real-time memory attribution panel with allergen guardrail alerts, score breakdowns (`similarity`, `recency_boost`, `rating_boost`, `type_priority_boost`, `usage_bonus`), memory store event counters, and latency trace details.
+    - `app/ui/pages/memory_inspector.py`: Memory auditing and inspection page with metric cards, text keyword filtering, type and status dropdown filters, TTL expiration dates, and one-click soft-delete (`forget`) capability.
+  - Verified 100% clean imports across all UI modules and full passing status across all 111 unit tests.
+- **2026-10-31 (MongoDB Timezone Awareness & Dual Identifier Resolution)**:
+  - Configured `MongoClient(..., tz_aware=True)` in `app/infra/db.py` to ensure PyMongo decodes MongoDB BSON dates into timezone-aware UTC datetimes.
+  - Implemented `ensure_utc_datetimes` utility in `app/infra/repositories/base.py` to defensively ensure timezone awareness across all repository queries.
+  - Updated `app/infra/repositories/user_repository.py`:
+    - `get_user`: Supports querying by either custom user handle (`user_id`) or MongoDB document `_id` (string or BSON `ObjectId`), resolving `404` errors when clients pass either identifier.
+    - Attached UTC timezone info to naive datetimes, resolving `500 Internal Server Error` (`ValidationError` on `created_at`).
+    - `delete_user`: Enhanced identifier lookup to match and delete by either `user_id` or `_id` before executing cascade deletions.
+  - Updated `app/infra/repositories/memory_repository.py` and `app/infra/repositories/message_repository.py` with `ensure_utc_datetimes` to protect all returned documents.
+- **2026-10-31 (Modular Infrastructure Repositories & Database Connector)**:
+  - Extracted MongoDB database client connection and ping diagnostics from `app/infra/config.py` into a dedicated `app/infra/db.py` module (`get_mongo_client`, `get_database`, `close_mongo_client`, `ping_database`).
+  - Modularized repository layers into dedicated files under `app/infra/repositories/`:
+    - `app/infra/repositories/base.py`: Custom exceptions (`VectorIndexNotReadyError`, `RateLimitError`), retry inspector (`is_rate_limit_error`), and vector search aggregation pipeline builder (`build_vector_search_pipeline`).
+    - `app/infra/repositories/user_repository.py`: Dedicated `UserRepository` handling user retrieval (`get_user`), upsert (`upsert_user`), and cascade deletion (`delete_user`).
+    - `app/infra/repositories/message_repository.py`: Dedicated `MessageRepository` handling chat turn storage (`insert_message`), history retrieval (`list_messages`), and session summaries (`list_sessions`).
+    - `app/infra/repositories/memory_repository.py`: Dedicated `MemoryRepository` handling vector index creation, search, memory CRUD, and lifecycle status transitions.
+    - `app/infra/repositories/__init__.py`: Clean package exports for specialized repositories and exceptions.
+  - Refactored `app/infra/memory_repository.py` into a lightweight composite facade delegating to the specialized repositories to ensure 100% backward compatibility across all services and tests.
+  - Updated `app/api/deps.py` and `app/api/routes/users.py` to use `UserRepository` directly via dependency injection.
+- **2026-10-31 (Pydantic Model Assignment Recursion Fix)**:
+  - Updated `app/domain/models.py` inside `apply_lifecycle_and_allergy_rules` to use `object.__setattr__` for setting `protected` and `expires_at` on allergy memories, resolving a `RecursionError` during assignment validation.
+  - Verified 100% test pass rate across the full test suite (105 of 105 tests passing).
+- **2026-10-31 (User Management API Routes & Cascade Deletion)**:
+  - Added `delete_user(user_id: str, cascade: bool = True) -> bool` to `app/infra/memory_repository.py` with support for cascade deletion of all user memories and messages.
+  - Implemented FastAPI dependency management in `app/api/deps.py` (`get_container`, `set_container`, `get_repository`).
+  - Implemented user REST API endpoints in `app/api/routes/users.py`:
+    - `POST /api/users` (Add user with unique `user_id` validation and 409 Conflict handling).
+    - `GET /api/users/{user_id}` (Retrieve user record with 404 Not Found handling).
+    - `DELETE /api/users/{user_id}` (Delete user with optional `cascade=true` query param, 404 handling).
+  - Configured FastAPI application in `app/api/main.py` with CORS middleware, lifespan initialization, and `/api/health` check.
+  - Added `fastapi>=0.110.0` and `uvicorn>=0.28.0` to `requirements.txt`.
+- **2026-10-31 (Index Provisioning Collection Creation & Dev Env Priority)**:
+  - Updated `app/infra/memory_repository.py` to ensure target collections (`memories`, `users`, `messages`) exist before calling `create_search_index`, preventing `NamespaceNotFound` errors on fresh databases.
+  - Updated `app/infra/config.py` to prioritize `.env.development` / `.env.devlopment` before `.env` with `override=True`.
+  - Synchronized `.env` with `.env.development`.
+- **2026-10-31 (Database Collection Schemas Documentation)**:
+  - Documented full database schemas in `README.md` under `## 🗄️ Database Collection Schemas`:
+    - `memories`: Comprehensive schema breakdown, structured payloads per memory type (`allergy`, `preference`, `meal_outcome`, `pantry_item`, `temporary_context`), and vector/TTL/compound index specifications.
+    - `messages`: Conversational schema with memory citation attribution (`memories_used`), turns, and session compound index.
+    - `users`: User profile, measurement unit settings, memory toggle, and unique index definitions.
+- **2026-10-31 (MongoDB Password URL-Encoding Safeguard)**:
+  - Updated `app/infra/config.py` to automatically URL-encode `MONGO_PASSWORD` using `urllib.parse.quote_plus` when replacing the `<db_password>` placeholder in `RAW_MONGO_URI`, preventing URI parsing breakages when passwords include special characters.
+- **2026-10-31 (Environment Loading & Config Resilience)**:
+  - Updated `app/infra/config.py` to search for development environment files (`.env.development`, `.env.devlopment`) before falling back to `.env.example`.
+  - Created `.env` from `.env.devlopment` to ensure MongoDB credentials and connection URIs load reliably across CLI and test runners.
+- **2026-10-31 (Index Provisioning Script Path Resolution)**:
+  - Added project root path insertion to `sys.path` in `scripts/create_indexes.py` using `pathlib.Path` to support direct script execution (`python scripts/create_indexes.py`) without requiring explicit `PYTHONPATH` or `python -m` invocation.
 - **2026-10-31 (Project Documentation & README Initialization)**:
   - Created comprehensive project documentation in `README.md`:
     - Overview of Memory Chef problem statement and architecture.
@@ -187,7 +369,7 @@ Key architectural pillars:
     - 11 comprehensive offline unit tests verifying happy path, store-before-recall ordering, memory-disabled bypass, failure isolation, empty/long inputs, pending/ambiguous change propagation, safety warning handling, and container composition.
 - **2026-10-31 (Gemini Generation Pipeline & Safety Guardrails Implementation)**:
   - Added `google-genai` to `requirements.txt`.
-  - Updated `app/infra/config.py` with LLM generation configurations (`LLM_PROVIDER`, `GEMINI_MODEL_EXTRACTION`, `GEMINI_MODEL_CHEF`, `LLM_TEMPERATURE_EXTRACTION`, `LLM_TEMPERATURE_CHEF`, `LLM_MAX_OUTPUT_TOKENS`, `LLM_TIMEOUT_SECONDS`).
+  - Updated `app/infra/config.py` with LLM generation configurations (`LLM_PROVIDER`, shared `MODEL`/`GEMINI_MODEL`, `LLM_TEMPERATURE_EXTRACTION`, `LLM_TEMPERATURE_CHEF`, `LLM_MAX_OUTPUT_TOKENS`, `LLM_TIMEOUT_SECONDS`).
   - Implemented `app/infra/llm_client.py`: abstract `LLMProvider` interface (`structured_output`, `generate_text`), custom exceptions (`LLMError`, `LLMOutputError`, `LLMRateLimitError`), singleton factory `get_llm_provider`, and `reset_llm_provider`.
   - Implemented `app/infra/providers/gemini_llm.py`: `GeminiLLMProvider` leveraging official `google-genai` SDK, structured output parsing with `parsed` and JSON fallback, token limit truncation retry handling, and backoff retries for rate limits and 5xx errors.
   - Implemented `app/infra/providers/mock_llm.py`: deterministic, offline `MockLLMProvider` parsing regex patterns for allergies, preferences, pantry, outcomes, and citations for `ExtractionResult` and `ChefResponseSchema`.

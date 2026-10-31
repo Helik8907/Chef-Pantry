@@ -1,6 +1,8 @@
 """Base classes, exceptions, and retry utilities for vector embedding strategies."""
 
 from abc import ABC, abstractmethod
+import html
+import re
 import time
 from typing import Any, Callable, TypeVar
 
@@ -10,6 +12,19 @@ T = TypeVar("T")
 class EmbeddingError(Exception):
     """Exception raised for embedding, vector generation, or vector search errors."""
     pass
+
+
+def markdown_to_plain_text(text: str) -> str:
+    """Remove common Markdown syntax before storing or embedding text."""
+    value = html.unescape(str(text or ""))
+    value = re.sub(r"```[^\n]*\n?(.*?)```", r"\1", value, flags=re.DOTALL)
+    value = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", value)
+    value = re.sub(r"<[^>]+>", " ", value)
+    value = re.sub(r"(?m)^\s{0,3}(?:#{1,6}\s+|>\s?|[-+*]\s+|\d+[.)]\s+)", "", value)
+    value = re.sub(r"[*`~]", "", value)
+    value = re.sub(r"(?m)^\s*[-*_]{3,}\s*$", "", value)
+    value = re.sub(r"\s+", " ", value)
+    return value.strip()
 
 
 def run_with_backoff(
@@ -70,6 +85,7 @@ class VectorStrategy(ABC):
         num_candidates: int | None = None,
     ) -> dict[str, Any]:
         """Build the full $vectorSearch aggregation stage dictionary."""
+        plain_query = markdown_to_plain_text(query_text)
         effective_num_candidates = (
             num_candidates if num_candidates is not None else self.num_candidates
         )
@@ -81,10 +97,10 @@ class VectorStrategy(ABC):
 
         if self.mode == "auto":
             vector_search["path"] = self.text_path
-            vector_search["query"] = query_text
+            vector_search["query"] = plain_query
         else:
             vector_search["path"] = "embedding"
-            vector_search["queryVector"] = self.embed_query(query_text)
+            vector_search["queryVector"] = self.embed_query(plain_query)
 
         if filters:
             filter_clause: dict[str, Any] = {}
