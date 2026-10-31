@@ -152,6 +152,8 @@ Key architectural pillars:
 ---
 
 ## 3. Project Changelog & Recent Updates
+- **2026-10-31 (README Refresh)**:
+  - Rewrote `README.md` to document the current Chef features, application architecture, requirements, environment settings, MongoDB index setup, Streamlit and FastAPI launch commands, and testing workflow.
 - **2026-10-31 (Streamlit Cloud Runtime Dependencies)**:
   - Declared the app's production dependencies in `pyproject.toml` so Streamlit Cloud's selected `uv.lock` install includes Pydantic, MongoDB, Gemini, FastAPI, and Streamlit packages.
   - Regenerated `uv.lock` from the project dependency manifest.
