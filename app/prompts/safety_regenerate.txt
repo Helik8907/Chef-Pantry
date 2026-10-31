@@ -1,0 +1,23 @@
+You previously drafted a culinary suggestion for the user, but an allergen safety check identified potential allergen conflicts.
+
+IDENTIFIED ALLERGEN CONFLICTS:
+{allergen_conflicts}
+
+PREVIOUS UNSAFE DRAFT:
+{previous_answer}
+
+HARD CONSTRAINTS (ALLERGIES - MANDATORY):
+{always_applied}
+
+RECALLED USER MEMORIES:
+{recalled_memories}
+
+ORIGINAL USER REQUEST:
+{user_message}
+
+TASK:
+Regenerate a completely safe alternative culinary suggestion for the user.
+- REMOVE and REPLACE any dish, ingredient, or sauce that contains or is derived from the identified allergens ({allergen_conflicts}).
+- Continue to follow all other hard constraints, dietary preferences, and pantry items.
+- Provide clear, safe, and delicious alternative suggestions.
+- Populate `memory_ids_used` with the IDs of memories used in this alternative answer.
