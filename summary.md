@@ -18,6 +18,8 @@ Key architectural pillars:
 
 ```
 .
+├── .devcontainer/
+│   └── devcontainer.json
 ├── .env.example
 ├── .gitignore
 ├── .python-version
@@ -26,6 +28,7 @@ Key architectural pillars:
 ├── pyproject.toml
 ├── requirements.txt
 ├── summary.md
+├── uv.lock
 ├── app/
 │   ├── __init__.py
 │   ├── api/
@@ -140,8 +143,10 @@ Key architectural pillars:
 | `app/infra/` | MongoDB repository integration (`app/infra/repositories/`), database connector (`app/infra/db.py`), application config, LLM clients, and vector providers |
 | `app/prompts/` | System text prompt templates for extraction, chef answering, conflict resolution, and safety verification |
 | `app/api/` | FastAPI backend service with dependency injection and routes (`app/api/main.py`, `app/api/deps.py`, `app/api/routes/users.py`) |
+| `.devcontainer/` | Dev Container configuration for local development tooling |
 | `web/` | Placeholder for future static web frontend assets |
 | `scripts/` | Database index creation, mock data seeding, and test state reset scripts |
+| `uv.lock` | Resolved package versions used by Streamlit Cloud's `uv-sync` deployment |
 | `tests/` | Unit tests for domain models/policies and service workflows |
 
 ---
@@ -150,6 +155,7 @@ Key architectural pillars:
 - **2026-10-31 (Streamlit Cloud Runtime Dependencies)**:
   - Declared the app's production dependencies in `pyproject.toml` so Streamlit Cloud's selected `uv.lock` install includes Pydantic, MongoDB, Gemini, FastAPI, and Streamlit packages.
   - Regenerated `uv.lock` from the project dependency manifest.
+  - Integrated the remote `.devcontainer/devcontainer.json` configuration while preserving the dependency fix.
 - **2026-10-31 (Sidebar-Driven Memory Management Page Routing)**:
   - Added dedicated `🧠 Memory Management` button in [`app/ui/components/sidebar.py`](file:///e:/Project/Chef-Pantry/app/ui/components/sidebar.py) with active state highlighting.
   - Removed top-level tab navigation from [`app/ui/main.py`](file:///e:/Project/Chef-Pantry/app/ui/main.py) to keep the main view clean and distraction-free.
