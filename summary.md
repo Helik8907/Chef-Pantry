@@ -147,6 +147,9 @@ Key architectural pillars:
 ---
 
 ## 3. Project Changelog & Recent Updates
+- **2026-10-31 (Streamlit Cloud Runtime Dependencies)**:
+  - Declared the app's production dependencies in `pyproject.toml` so Streamlit Cloud's selected `uv.lock` install includes Pydantic, MongoDB, Gemini, FastAPI, and Streamlit packages.
+  - Regenerated `uv.lock` from the project dependency manifest.
 - **2026-10-31 (Sidebar-Driven Memory Management Page Routing)**:
   - Added dedicated `🧠 Memory Management` button in [`app/ui/components/sidebar.py`](file:///e:/Project/Chef-Pantry/app/ui/components/sidebar.py) with active state highlighting.
   - Removed top-level tab navigation from [`app/ui/main.py`](file:///e:/Project/Chef-Pantry/app/ui/main.py) to keep the main view clean and distraction-free.
