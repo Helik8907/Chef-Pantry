@@ -152,6 +152,8 @@ Key architectural pillars:
 ---
 
 ## 3. Project Changelog & Recent Updates
+- **2026-10-31 (README Hosted App Link)**:
+  - Added the deployed Streamlit Community Cloud URL and a short note distinguishing the hosted app from local development instructions in `README.md`.
 - **2026-10-31 (README Refresh)**:
   - Rewrote `README.md` to document the current Chef features, application architecture, requirements, environment settings, MongoDB index setup, Streamlit and FastAPI launch commands, and testing workflow.
 - **2026-10-31 (Streamlit Cloud Runtime Dependencies)**:

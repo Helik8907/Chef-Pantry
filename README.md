@@ -2,6 +2,12 @@
 
 Chef is a personalized culinary assistant built with Streamlit, FastAPI, MongoDB, and Google Gemini. It remembers useful cooking context across conversations and uses it to tailor recipe suggestions.
 
+## Try Chef
+
+Open the deployed Streamlit application: [Chef on Streamlit Community Cloud](https://chef-pantry-bkkma5ieiv3agtkdzgy5dq.streamlit.app/).
+
+The hosted app runs from the project's configured Streamlit deployment. To run a local copy or work on the code, follow the setup instructions below and start Streamlit with `streamlit run app/ui/main.py`.
+
 ## Features
 
 - **Conversational cooking help:** Chat across persistent sessions and get exactly three concise recipe options in food and cooking answers.
